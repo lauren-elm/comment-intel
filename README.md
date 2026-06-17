@@ -18,11 +18,11 @@ It's **white-label** and **self-serve** — each person brings their own Meta ap
 Add the marketplace, then install the plugin:
 
 ```
-/plugin marketplace add <your-github-username>/comment-intel
+/plugin marketplace add lauren-elm/comment-intel
 /plugin install comment-intel
 ```
 
-> Replace `<your-github-username>/comment-intel` with wherever you host this repo. You can also point at a local path while testing: `/plugin marketplace add /path/to/comment-intel`.
+> The repo must be **public** for others to install this way. You can also point at a local path while testing: `/plugin marketplace add /path/to/comment-intel`.
 
 That gives everyone two slash commands:
 
