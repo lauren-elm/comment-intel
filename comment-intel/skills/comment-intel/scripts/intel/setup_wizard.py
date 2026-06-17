@@ -34,6 +34,7 @@ MIN_ROAS={MIN_ROAS}
 TOP_BY_SPEND={TOP_BY_SPEND}
 MIN_COMMENTS={MIN_COMMENTS}
 MAX_PER_POST={MAX_PER_POST}
+OUTPUT_DIR={OUTPUT_DIR}
 
 # --- Cloudflare R2 (gallery + media hosting) ---
 R2_ACCOUNT_ID={R2_ACCOUNT_ID}
@@ -121,8 +122,13 @@ def main(cfg, args):
     data['R2_ENDPOINT'] = _ask("R2 S3 endpoint", data.get('R2_ENDPOINT', ''))
     data['R2_PUBLIC_BASE'] = _ask("R2 public base URL (custom domain or r2.dev)", data.get('R2_PUBLIC_BASE', ''))
 
-    # --- write ---
-    out = pathlib.Path.cwd() / 'config.env'
+    # --- write (honor INTEL_CONFIG so the skill can fix a stable workspace) ---
+    import os
+    out = (pathlib.Path(os.environ['INTEL_CONFIG']).expanduser() if os.environ.get('INTEL_CONFIG')
+           else pathlib.Path.cwd() / 'config.env')
+    out.parent.mkdir(parents=True, exist_ok=True)
+    if not data.get('OUTPUT_DIR'):
+        data['OUTPUT_DIR'] = str(out.parent / 'output')
     if out.exists():
         if _ask(f"\n{out} exists. Overwrite? (y/N)", 'N').lower() != 'y':
             print("Kept existing config. Edit it by hand if needed."); return 0

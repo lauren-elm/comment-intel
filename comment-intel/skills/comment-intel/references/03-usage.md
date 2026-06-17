@@ -3,7 +3,7 @@
 Once `intel doctor` is all green, you're ready.
 
 ```bash
-python -m intel run
+python comment_intel.py run
 ```
 
 That runs the whole pipeline. Here's what each stage does and how to tune it.
@@ -55,20 +55,20 @@ Change a value, re-run `intel run`. Ranking re-reads from cache, so it's quick.
 
 ```bash
 # Just the spend/ROI report, no scraping:
-python -m intel run --rank-only
+python comment_intel.py run --rank-only
 
 # Faster scrape (skip reply threads):
-python -m intel run --no-replies
+python comment_intel.py run --no-replies
 
 # Build the gallery locally without uploading:
-python -m intel gallery --no-upload
+python comment_intel.py gallery --no-upload
 
 # Re-scrape everything from scratch (ignore what's already pulled):
-python -m intel pull --fresh
+python comment_intel.py pull --fresh
 
 # Analyze a longer history:
 #   set MONTHS_BACK=24 in config.env, then:
-python -m intel run
+python comment_intel.py run
 ```
 
 ---

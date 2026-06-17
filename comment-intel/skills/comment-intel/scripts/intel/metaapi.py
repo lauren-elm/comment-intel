@@ -102,19 +102,8 @@ def page_token(cfg, tok=None):
                      'the token has pages_show_list / pages_read_user_content.')
 
 
-# ---------- Cloudflare R2 ----------
-_R2 = {'client': None}
-
-
-def r2_client(cfg):
-    if _R2['client'] is None:
-        import boto3
-        r = cfg.r2()
-        _R2['client'] = boto3.client(
-            's3', endpoint_url=r['R2_ENDPOINT'],
-            aws_access_key_id=r['R2_ACCESS_KEY_ID'],
-            aws_secret_access_key=r['R2_SECRET_ACCESS_KEY'], region_name='auto')
-    return _R2['client']
+# ---------- Cloudflare R2 (pure stdlib, SigV4 — no boto3) ----------
+from . import r2 as _r2
 
 
 def r2_put_url(cfg, src_url, key):
@@ -126,16 +115,12 @@ def r2_put_url(cfg, src_url, key):
         req = urllib.request.Request(src_url, headers={'User-Agent': UA})
         with urllib.request.urlopen(req, timeout=120) as resp:
             body = resp.read(); ctype = resp.headers.get('Content-Type', 'image/jpeg')
-        r2_client(cfg).put_object(Bucket=r['R2_BUCKET'], Key=key, Body=body, ContentType=ctype)
-        return f"{r['R2_PUBLIC_BASE'].rstrip('/')}/{key}"
+        return _r2.put_object(r, key, body, ctype)
     except Exception as ex:
         print(f"    ! R2 mirror failed ({key}): {ex}", file=sys.stderr)
         return None
 
 
 def r2_put_html(cfg, key, htmldoc):
-    r = cfg.r2()
-    r2_client(cfg).put_object(Bucket=r['R2_BUCKET'], Key=key,
-                              Body=htmldoc.encode('utf-8'),
-                              ContentType='text/html; charset=utf-8')
-    return f"{r['R2_PUBLIC_BASE'].rstrip('/')}/{key}"
+    return _r2.put_object(cfg.r2(), key, htmldoc.encode('utf-8'),
+                          'text/html; charset=utf-8')

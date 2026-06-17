@@ -1,0 +1,8 @@
+{
+  "name": "comment-intel",
+  "description": "White-label Facebook ad-comment intelligence. Guided onboarding connects the user's own Meta app (ad account + Page, read-only) and a free Cloudflare R2 bucket, then ranks their top-spending and positive-ROI ad posts over any window, scrapes every comment + reply, mirrors photos/videos to R2, and publishes a searchable gallery (press-Enter search, photo/video + category filters, View-on-Facebook deep links). Read-only on Facebook. Pure Python standard library — no pip install. Commands: /comment-intel:setup and /comment-intel:run.",
+  "version": "1.0.0",
+  "author": {
+    "name": "Ad Comment Intel"
+  }
+}

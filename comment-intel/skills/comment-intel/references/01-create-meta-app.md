@@ -62,13 +62,13 @@ Time: ~15 minutes, once.
 Run the wizard and paste the token when asked:
 
 ```bash
-python -m intel setup
+python comment_intel.py setup
 ```
 
 It validates the token, lists your ad accounts and Pages to pick from, and writes everything to `config.env`. Then:
 
 ```bash
-python -m intel doctor
+python comment_intel.py doctor
 ```
 
 should show **[PASS]** for the Meta token, ad account, and Page token.

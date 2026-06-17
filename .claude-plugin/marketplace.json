@@ -1,0 +1,20 @@
+{
+  "name": "comment-intel",
+  "owner": {
+    "name": "Ad Comment Intel"
+  },
+  "metadata": {
+    "description": "White-label Facebook ad-comment mining for Claude Code. Connect your own Meta app + ad account + Cloudflare R2, rank top-spending / positive-ROI ad posts over any window, scrape every comment + reply (read-only), mirror media to R2, and publish a searchable gallery. Zero dependencies — pure Python standard library.",
+    "version": "1.0.0"
+  },
+  "plugins": [
+    {
+      "name": "comment-intel",
+      "source": "./comment-intel",
+      "description": "Rank a Facebook ad account's top-spending and positive-ROI posts, scrape every comment + reply (read-only), mirror photos/videos to your Cloudflare R2, and publish a searchable white-label gallery. Includes guided onboarding (Meta app, permissions, R2).",
+      "version": "1.0.0",
+      "category": "marketing",
+      "tags": ["facebook-ads", "comments", "voice-of-customer", "meta", "cloudflare-r2", "cro", "white-label"]
+    }
+  ]
+}

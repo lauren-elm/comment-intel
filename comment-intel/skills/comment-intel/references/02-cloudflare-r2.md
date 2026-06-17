@@ -54,7 +54,7 @@ Pick **one** of these:
 
 ## D. Plug it in
 
-If you haven't run setup yet, do `python -m intel setup` and paste these when asked. Or edit `config.env`:
+If you haven't run setup yet, do `python comment_intel.py setup` and paste these when asked. Or edit `config.env`:
 
 ```
 R2_ACCOUNT_ID=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
@@ -67,7 +67,7 @@ R2_PUBLIC_BASE=https://files.yourdomain.com
 
 Verify:
 ```bash
-python -m intel doctor
+python comment_intel.py doctor
 ```
 should show **[PASS] Cloudflare R2 — wrote https://…/_doctor.txt**.
 

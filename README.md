@@ -1,97 +1,103 @@
-# 🛰️ Ad Comment Intel
+# 🛰️ Comment Intel — a Claude Code plugin
 
-**Turn your best Facebook ads' comment sections into a searchable goldmine of voice-of-customer intel.**
+**Turn any brand's best Facebook ads' comment sections into a searchable goldmine of voice-of-customer intel — all inside Claude Code.**
 
-This kit finds your **highest-spending and most profitable ad posts** over any window, scrapes **every comment + reply** off them (read-only), mirrors the attached **photos and videos** to your own cloud, and publishes a **searchable, filterable gallery** you can share with a link.
+Comment Intel finds an ad account's **highest-spending and most profitable posts** over any window, scrapes **every comment + reply** off them (read-only), mirrors the attached **photos and videos** to your own Cloudflare R2, and publishes a **searchable, filterable gallery** you can share with a link.
 
-It's **white-label** and **self-serve** — you bring your own Meta app, ad account, and a free Cloudflare R2 bucket. Your data stays on your infrastructure.
+It's **white-label** and **self-serve** — each person brings their own Meta app, ad account, and a free Cloudflare R2 bucket. Pure Python standard library: **nothing to `pip install`.**
 
 ```
-┌─────────┐   ┌──────────┐   ┌──────────────┐   ┌─────────────────┐
-│  rank   │ → │   pull   │ → │   gallery    │ → │  share the URL  │
-│ spend + │   │ comments │   │  search +    │   │  files.you.com/ │
-│  ROI    │   │ + media  │   │  filters     │   │  …gallery.html  │
-└─────────┘   └──────────┘   └──────────────┘   └─────────────────┘
+/comment-intel:setup   →   /comment-intel:run   →   shareable gallery URL
+   (guided onboarding)       (rank → scrape → publish)
 ```
 
 ---
 
-## What you get
+## Install (in Claude Code)
 
-- **Smart targeting** — ranks ad *posts* (not just ads) by total spend and FB-attributed ROAS, then pulls the union of your **positive-ROI** posts and your **top spenders**. The biggest, most relevant pool — not random ads.
-- **Complete comment capture** — every top-level comment *and* reply thread, with likes, dates, and a light auto-classification (🔴 complaint / ❓ question / 🟢 positive / ⚪ other).
-- **Durable media** — photos and videos customers attached are copied to your R2 (Facebook's CDN links expire; yours won't).
-- **A gallery people actually use** — press-Enter search over the comment text, filter by Photos / Videos / category, and a one-click **"View on Facebook"** deep link on every card that jumps to the live comment.
-- **Resumable + rate-limit-safe** — monthly spend pulls are cached; comment scraping skips what's already done.
+Add the marketplace, then install the plugin:
 
-> **Read-only.** This tool never writes to Facebook — no replies, hides, or bans.
-
----
-
-## Quick start
-
-```bash
-# 1. Install (Python 3.9+)
-pip install -r requirements.txt        # or: pip install .
-
-# 2. Onboard — connect Meta + Cloudflare (interactive)
-python -m intel setup
-
-# 3. Verify everything connects
-python -m intel doctor
-
-# 4. Go — rank, scrape, publish
-python -m intel run
+```
+/plugin marketplace add <your-github-username>/comment-intel
+/plugin install comment-intel
 ```
 
-When it finishes you'll get a **shareable gallery URL**. That's it.
+> Replace `<your-github-username>/comment-intel` with wherever you host this repo. You can also point at a local path while testing: `/plugin marketplace add /path/to/comment-intel`.
 
-> If you ran `pip install .`, you can use the shorter `intel setup` / `intel run` instead of `python -m intel …`.
-
----
-
-## Setup guides (do these once)
-
-1. **[Create your Meta app + token](docs/01-create-meta-app.md)** — make a Facebook app, connect your ad account + Page, grant the read permissions, and get a long-lived token.
-2. **[Set up Cloudflare R2](docs/02-cloudflare-r2.md)** — a free bucket + public domain to host the gallery and media.
-3. **[Usage & the flow](docs/03-usage.md)** — commands, the window/threshold settings, and how the ranking works.
-4. **[Troubleshooting](docs/04-troubleshooting.md)** — rate limits, dark posts, common errors.
-
----
-
-## Commands
+That gives everyone two slash commands:
 
 | Command | What it does |
 |---|---|
-| `intel setup` | Interactive onboarding → writes `config.env` |
-| `intel doctor` | Verifies Meta token, ad account, Page token, and R2 |
-| `intel rank` | Ranks posts by spend + ROI → `output/posts_*.csv` + `post_list.txt` |
-| `intel pull` | Scrapes comments for the selected posts → `output/comment_store/` |
-| `intel gallery` | Builds + uploads the searchable gallery |
-| `intel run` | All of the above, end to end |
+| **`/comment-intel:setup`** | Guided onboarding — create a Meta app + read-only token, connect the ad account + Page, set up a free Cloudflare R2 bucket, and verify the connection. |
+| **`/comment-intel:run`** | Rank top-spending + positive-ROI posts → scrape comments → publish the searchable gallery. |
 
-Useful flags: `intel run --rank-only` (just the spend/ROI report), `--no-replies` (faster), `--no-upload` (build gallery locally), `--fresh` (re-scrape posts already done).
+You can also just talk to it: *"set up comment intel"* / *"pull the comments off my best ads."*
 
 ---
 
-## Outputs
+## What it does
+
+- **Smart targeting** — ranks ad *posts* (not just ads) by total spend and FB-attributed ROAS, then pulls the union of **positive-ROI** posts and **top spenders**. The biggest, most relevant pool.
+- **Complete capture** — every top-level comment *and* reply, with likes, dates, and auto-classification (🔴 complaint / ❓ question / 🟢 positive / ⚪ other).
+- **Durable media** — customer photos/videos copied to your R2 (Facebook's CDN links expire; yours won't).
+- **A gallery people use** — press-Enter search, Photos / Videos / category filters, and a **"View on Facebook"** deep link per comment.
+- **Resumable + rate-limit-safe** — cached spend pulls; scraping skips what's done.
+
+> **Read-only.** Never writes to Facebook — no replies, hides, or bans.
+
+---
+
+## First-time setup (what each person needs)
+
+Two external accounts, ~25 minutes once. The `/comment-intel:setup` command walks them through both:
+
+1. **A Meta app + read-only token** → `comment-intel/skills/comment-intel/references/01-create-meta-app.md`
+2. **A free Cloudflare R2 bucket** → `comment-intel/skills/comment-intel/references/02-cloudflare-r2.md`
+
+State lives in a per-user workspace: `~/comment-intel/config.env` (connection) and `~/comment-intel/output/` (CSVs, comment data, local gallery copy).
+
+---
+
+## Run it as a plain script (optional, no Claude Code)
+
+Everything is a normal Python program if you ever want it outside Claude Code:
+
+```bash
+cd comment-intel/skills/comment-intel/scripts
+python comment_intel.py setup      # onboarding wizard
+python comment_intel.py doctor     # verify connections
+python comment_intel.py run        # rank → scrape → publish
+```
+
+No dependencies — Python 3.9+ only.
+
+---
+
+## Repo layout
 
 ```
-output/
-├── posts_by_spend.csv        # every post ranked by spend (+ revenue, ROAS)
-├── posts_positive_roi.csv    # the positive-ROI cut
-├── post_list.txt             # the posts selected for comment scraping
-├── comment_store/            # one JSON per post: comments, replies, media, categories
-└── comment-gallery.html      # local copy of the gallery (also uploaded to R2)
+.claude-plugin/marketplace.json          # marketplace manifest
+comment-intel/
+├── .claude-plugin/plugin.json           # plugin manifest
+├── commands/
+│   ├── setup.md                         # /comment-intel:setup
+│   └── run.md                           # /comment-intel:run
+└── skills/comment-intel/
+    ├── SKILL.md                         # how Claude drives it
+    ├── references/                      # the setup + usage guides
+    └── scripts/
+        ├── comment_intel.py             # launcher (python comment_intel.py …)
+        ├── config.example.env
+        └── intel/                       # the engine (pure stdlib)
 ```
 
 ---
 
 ## Important caveats
 
-- **Commenter identity is privacy-locked.** Facebook returns no name/ID for regular commenters. This is voice-of-customer *content*, not a lead list.
-- **The gallery is public** (anyone with the unguessable URL can view it) and **may contain customer-posted emails/photos.** Keep the link internal; don't index it publicly.
-- **ROI = FB-attributed** (`omni_purchase` value ÷ spend). It's a strong *directional* indicator, not last-touch funnel truth.
-- **Dark/unpublished ad posts** sometimes report zero comments (engagement is consolidated elsewhere) — they're skipped automatically.
+- **Commenter identity is privacy-locked.** Facebook returns no name/ID for regular commenters — voice-of-customer *content*, not a lead list.
+- **The gallery is public** (unguessable URL) and **may contain customer-posted emails/photos.** Keep the link internal.
+- **ROI = FB-attributed** (`omni_purchase` value ÷ spend) — a directional indicator, not last-touch funnel truth.
+- **Each brand uses its own** Meta app + R2. Never mix tokens or buckets.
 
 MIT licensed. Built to be gifted. 🌱
