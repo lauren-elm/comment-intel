@@ -1,6 +1,8 @@
-"""Build a white-label, searchable HTML comment gallery from the JSON store and
-publish it to your Cloudflare R2. Search runs on Enter; filter by media / category;
-each card deep-links to the live comment on Facebook.
+"""Build a white-label, searchable comment gallery from the JSON store and publish
+it to your Cloudflare R2. Mobile-friendly: comment data is embedded as JSON and
+cards render incrementally on scroll, so even 20k+ comments stay fast on a phone.
+Search runs on Enter; filter by media / category; each card deep-links to the live
+comment on Facebook. Also writes a flat CSV export.
 """
 import csv, json, html
 from . import metaapi
@@ -48,63 +50,82 @@ CSS = """
 :root{--bg:#0f1410;--card:#1b241c;--ink:#e8f0e6;--dim:#8aa088;--line:#2c3a2d;--accent:#1f7a33;}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 -apple-system,Segoe UI,Roboto,sans-serif}
-header{position:sticky;top:0;background:rgba(15,20,16,.96);backdrop-filter:blur(6px);
-  border-bottom:1px solid var(--line);padding:14px 20px;z-index:5}
-h1{margin:0 0 8px;font-size:18px}
-.sub{color:var(--dim);font-size:13px;margin-bottom:10px}
-.filters{display:flex;flex-wrap:wrap;gap:8px}
+header{position:sticky;top:0;background:rgba(15,20,16,.97);backdrop-filter:blur(6px);
+  border-bottom:1px solid var(--line);padding:12px 16px;z-index:5}
+h1{margin:0 0 6px;font-size:17px}
+.sub{color:var(--dim);font-size:12px;margin-bottom:9px}
+.filters{display:flex;flex-wrap:wrap;gap:7px}
 .filters button{background:var(--card);color:var(--ink);border:1px solid var(--line);
-  border-radius:20px;padding:6px 14px;cursor:pointer;font-size:13px}
+  border-radius:20px;padding:6px 13px;cursor:pointer;font-size:13px}
 .filters button.on{background:var(--accent);border-color:var(--accent);color:#fff}
-.search{width:100%;max-width:440px;margin-bottom:10px;background:var(--card);color:var(--ink);
-  border:1px solid var(--line);border-radius:20px;padding:9px 16px;font-size:14px;outline:none}
+.search{width:100%;margin-bottom:9px;background:var(--card);color:var(--ink);
+  border:1px solid var(--line);border-radius:20px;padding:10px 16px;font-size:16px;outline:none}
 .search:focus{border-color:var(--accent)}
+#count{display:block;margin-top:8px;color:var(--dim);font-size:12px}
 .nores{display:none;color:var(--dim);text-align:center;padding:40px;font-size:14px}
-.grid{column-width:300px;column-gap:16px;padding:18px}
-.card{break-inside:avoid;background:var(--card);border:1px solid var(--line);border-radius:12px;
-  overflow:hidden;margin:0 0 16px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:14px;padding:16px}
+@media(max-width:560px){.grid{grid-template-columns:1fr;gap:12px;padding:12px}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden}
 .card img,.card video{width:100%;display:block;background:#0a0d0a}
-.meta{display:flex;justify-content:space-between;align-items:center;padding:8px 12px 0}
+.meta{display:flex;justify-content:space-between;align-items:center;padding:8px 12px 0;gap:8px}
 .text{padding:6px 12px 10px;white-space:pre-wrap;word-break:break-word}
-.badge{font-size:11px;padding:2px 8px;border-radius:10px;border:1px solid var(--line)}
+.badge{font-size:11px;padding:2px 8px;border-radius:10px;border:1px solid var(--line);white-space:nowrap}
 .badge.complaint{color:#ff9a9a}.badge.question{color:#9ac6ff}
 .badge.positive{color:#9ff0b0}.badge.other{color:var(--dim)}
 .dim{color:var(--dim);font-size:12px}
 .foot{padding:0 12px 12px}
 .fb{display:inline-block;font-size:12px;color:#9ac6ff;text-decoration:none;border:1px solid var(--line);
-  border-radius:8px;padding:4px 10px}
+  border-radius:8px;padding:5px 11px}
 .fb:hover{border-color:#9ac6ff;background:rgba(154,198,255,.08)}
 """
 
 JS = """
-const btns=document.querySelectorAll('.filters button');
-const cards=document.querySelectorAll('.card');
-const qbox=document.getElementById('q');
+const EMO={complaint:'🔴',question:'❓',positive:'🟢',other:'⚪'};
+const DATA=__DATA__;
+const grid=document.getElementById('grid');
+const sentinel=document.getElementById('more');
 const nores=document.getElementById('nores');
-let filter='all', query='';
-function matchF(c){
-  if(filter==='all') return true;
-  if(filter==='media') return c.dataset.media!=='none';
-  if(filter==='photo') return c.dataset.media==='photo';
-  if(filter==='video') return c.dataset.media==='video';
-  return c.dataset.cat===filter;
+const counter=document.getElementById('count');
+const qbox=document.getElementById('q');
+const btns=document.querySelectorAll('.filters button');
+let filter='all', query='', shown=0, filtered=DATA;
+const BATCH=40;
+function matchF(o){
+  if(filter==='all')return true;
+  if(filter==='media')return !!o.m;
+  if(filter==='photo')return o.m&&!o.v;
+  if(filter==='video')return !!o.v;
+  return o.c===filter;
+}
+function esc(s){const d=document.createElement('div');d.textContent=s||'';return d.innerHTML;}
+function card(o){
+  let media='';
+  if(o.v){media='<video controls preload="none" '+(o.p?('poster="'+o.p+'" '):'')+'src="'+o.m+'"></video>';}
+  else if(o.m){media='<img loading="lazy" src="'+o.m+'" onerror="this.style.display=\\'none\\'">';}
+  const link=o.f?('<a class="fb" href="'+o.f+'" target="_blank" rel="noopener">↗ View on Facebook</a>'):'';
+  return '<div class="card">'+media+'<div class="meta"><span class="badge '+o.c+'">'+(EMO[o.c]||'⚪')+' '+o.c+
+    '</span><span class="dim">♥ '+(o.l||0)+' · '+(o.d||'')+'</span></div><div class="text">'+
+    esc(o.t)+'</div><div class="foot">'+link+'</div></div>';
+}
+function renderMore(){
+  const next=filtered.slice(shown,shown+BATCH);
+  if(next.length){grid.insertAdjacentHTML('beforeend',next.map(card).join(''));shown+=next.length;}
+  sentinel.style.display=(shown<filtered.length)?'block':'none';
 }
 function apply(){
-  let shown=0;
-  cards.forEach(c=>{
-    const show = matchF(c) && (!query || (c.dataset.q||'').indexOf(query)>=0);
-    c.style.display = show?'':'none';
-    if(show) shown++;
-  });
-  nores.style.display = shown?'none':'block';
+  filtered=DATA.filter(matchF);
+  if(query){filtered=filtered.filter(function(o){return (o.t||'').toLowerCase().indexOf(query)>=0;});}
+  grid.innerHTML='';shown=0;
+  counter.textContent=filtered.length.toLocaleString()+' shown';
+  nores.style.display=filtered.length?'none':'block';
+  renderMore();
 }
-btns.forEach(b=>b.onclick=()=>{
-  btns.forEach(x=>x.classList.remove('on'));b.classList.add('on');
-  filter=b.dataset.f; apply();
-});
-function runSearch(){ query=qbox.value.toLowerCase().trim(); apply(); }
-qbox.addEventListener('search', runSearch);
-qbox.addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); runSearch(); } });
+btns.forEach(function(b){b.onclick=function(){btns.forEach(function(x){x.classList.remove('on');});b.classList.add('on');filter=b.dataset.f;apply();};});
+function runSearch(){query=qbox.value.toLowerCase().trim();apply();}
+qbox.addEventListener('search',runSearch);
+qbox.addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();runSearch();}});
+new IntersectionObserver(function(es){if(es[0].isIntersecting)renderMore();},{rootMargin:'600px'}).observe(sentinel);
+apply();
 """
 
 
@@ -115,52 +136,46 @@ def build(cfg, upload=False):
     n_photo = sum(1 for i in items if not i.get('video') and i['img'])
     counts = {k: sum(1 for i in items if i['cat'] == k) for k in EMO}
 
-    cards = []
+    # compact data array for client-side incremental rendering (mobile-friendly)
+    data = []
     for i in items:
-        t = html.escape(i['text'])[:600]
-        badge = f"{EMO.get(i['cat'], '⚪')} {i['cat']}"
+        o = {'t': (i['text'] or '')[:400], 'c': i['cat'], 'l': i['likes'], 'd': i['time']}
+        f = fb_link(i['post'], i['cid'])
+        if f:
+            o['f'] = f
         if i.get('video'):
-            poster = f'poster="{html.escape(i["img"])}"' if i['img'] else ''
-            mediatag = f'<video controls preload="none" {poster} src="{html.escape(i["video"])}"></video>'
+            o['v'] = 1; o['m'] = i['video']
+            if i['img']:
+                o['p'] = i['img']
         elif i['img']:
-            mediatag = f'<img loading="lazy" src="{html.escape(i["img"])}" onerror="this.style.display=\'none\'">'
-        else:
-            mediatag = ''
-        mtype = 'video' if i.get('video') else ('photo' if i['img'] else 'none')
-        qtext = html.escape(i['text'].lower(), quote=True)
-        link = fb_link(i['post'], i['cid'])
-        linktag = (f'<a class="fb" href="{html.escape(link)}" target="_blank" rel="noopener">↗ View on Facebook</a>'
-                   if link else '')
-        cards.append(
-            f'<div class="card" data-cat="{i["cat"]}" data-media="{mtype}" data-q="{qtext}">'
-            f'{mediatag}'
-            f'<div class="meta"><span class="badge {i["cat"]}">{badge}</span>'
-            f'<span class="dim">♥ {i["likes"]} · {i["time"]}</span></div>'
-            f'<div class="text">{t}</div>'
-            f'<div class="foot">{linktag}</div></div>')
+            o['m'] = i['img']
+        data.append(o)
+    datajson = json.dumps(data, ensure_ascii=False).replace('</', '<\\/')
+    js = JS.replace('__DATA__', datajson)
 
     title = html.escape(cfg.brand) + ' — Ad Comment Intel'
-    sub = (f"{len(items)} comments · {len(with_media)} with media ({n_vid} video) · "
-           f"🔴 {counts['complaint']} complaints · ❓ {counts['question']} questions · 🟢 {counts['positive']} positive")
+    sub = (f"{len(items):,} comments · {len(with_media):,} with media ({n_vid} video) · "
+           f"🔴 {counts['complaint']:,} · ❓ {counts['question']:,} · 🟢 {counts['positive']:,}")
     filters = (
-        f'<button data-f="all" class="on">All ({len(items)})</button>'
-        f'<button data-f="media">🖼 Has media ({len(with_media)})</button>'
-        f'<button data-f="photo">📷 Photos ({n_photo})</button>'
+        f'<button data-f="all" class="on">All ({len(items):,})</button>'
+        f'<button data-f="media">🖼 Media ({len(with_media):,})</button>'
+        f'<button data-f="photo">📷 Photos ({n_photo:,})</button>'
         f'<button data-f="video">🎬 Videos ({n_vid})</button>'
-        f'<button data-f="complaint">🔴 Complaints ({counts["complaint"]})</button>'
-        f'<button data-f="question">❓ Questions ({counts["question"]})</button>'
-        f'<button data-f="positive">🟢 Positive ({counts["positive"]})</button>')
+        f'<button data-f="complaint">🔴 Complaints ({counts["complaint"]:,})</button>'
+        f'<button data-f="question">❓ Questions ({counts["question"]:,})</button>'
+        f'<button data-f="positive">🟢 Positive ({counts["positive"]:,})</button>')
 
     doc = (
-        '<!doctype html><html><head><meta charset="utf-8">'
+        '<!doctype html><html lang="en"><head><meta charset="utf-8">'
         '<meta name="viewport" content="width=device-width,initial-scale=1">'
         f'<title>{title}</title><style>{CSS}</style></head><body>'
         f'<header><h1>{title}</h1><div class="sub">{sub}</div>'
         '<input id="q" class="search" type="search" placeholder="🔎 Search comment text — press Enter" autocomplete="off">'
-        f'<div class="filters">{filters}</div></header>'
-        f'<div class="grid" id="grid">{"".join(cards)}</div>'
+        f'<div class="filters">{filters}</div><span id="count"></span></header>'
+        '<div class="grid" id="grid"></div>'
+        '<div id="more" style="height:1px"></div>'
         '<div class="nores" id="nores">No comments match your search + filter.</div>'
-        f'<script>{JS}</script></body></html>')
+        f'<script>{js}</script></body></html>')
 
     out = cfg.outdir / 'comment-gallery.html'
     out.write_text(doc, encoding='utf-8')
@@ -195,7 +210,6 @@ def export_csv(cfg, items):
         w.writerow([i['post'], i['cid'], i['cat'], i['likes'], i['time'],
                     media, fb_link(i['post'], i['cid']), text])
     csv_text = buf.getvalue()
-    # utf-8-sig so Excel opens it cleanly
     (cfg.outdir / 'comments_export.csv').write_text('﻿' + csv_text, encoding='utf-8')
     return csv_text
 
