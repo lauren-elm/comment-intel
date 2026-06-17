@@ -1,0 +1,14 @@
+# secrets + local data — never commit
+config.env
+.env
+output/
+*.bak
+
+# python
+__pycache__/
+*.pyc
+*.egg-info/
+.venv/
+venv/
+build/
+dist/

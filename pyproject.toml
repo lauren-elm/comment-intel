@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ad-comment-intel"
+version = "1.0.0"
+description = "White-label Facebook ad-comment mining + searchable gallery (bring your own Meta app + Cloudflare R2)."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+dependencies = ["boto3>=1.28"]
+
+[project.scripts]
+intel = "intel.__main__:main"
+
+[tool.setuptools]
+packages = ["intel"]
