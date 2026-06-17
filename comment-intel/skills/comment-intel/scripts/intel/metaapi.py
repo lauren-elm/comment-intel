@@ -124,3 +124,7 @@ def r2_put_url(cfg, src_url, key):
 def r2_put_html(cfg, key, htmldoc):
     return _r2.put_object(cfg.r2(), key, htmldoc.encode('utf-8'),
                           'text/html; charset=utf-8')
+
+
+def r2_put_text(cfg, key, text, content_type='text/plain; charset=utf-8'):
+    return _r2.put_object(cfg.r2(), key, text.encode('utf-8'), content_type)

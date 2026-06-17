@@ -33,6 +33,8 @@ Builds the searchable HTML from everything in `comment_store/` and uploads it to
 
 The gallery has: press-Enter **search**, **Photos / Videos / Has-media** filters, **category** filters (complaint/question/positive), and a **"View on Facebook"** deep link per card.
 
+It also writes a **flat data export** — `output/comments_export.csv` (one row per comment: post_id, comment_id, category, likes, date, media_url, facebook_link, text) — and uploads it next to the gallery as `…-comments.csv`. That's the machine-readable file to pull into a spreadsheet, a script, or another tool, instead of the visual page.
+
 ---
 
 ## Settings (`config.env`)

@@ -2,7 +2,7 @@
 publish it to your Cloudflare R2. Search runs on Enter; filter by media / category;
 each card deep-links to the live comment on Facebook.
 """
-import json, html
+import csv, json, html
 from . import metaapi
 
 EMO = {'complaint': '🔴', 'question': '❓', 'positive': '🟢', 'other': '⚪'}
@@ -164,17 +164,40 @@ def build(cfg, upload=False):
 
     out = cfg.outdir / 'comment-gallery.html'
     out.write_text(doc, encoding='utf-8')
+    csv_text = export_csv(cfg, items)
     print(f"comments: {len(items)} | with media: {len(with_media)} ({n_vid} video)")
     print(f"Local gallery: {out}")
+    print(f"Local data export: {cfg.outdir / 'comments_export.csv'}")
     url = None
     if upload:
         if not cfg.r2_ready():
             print("  ! R2 not configured — skipping upload. Run `intel setup` to add R2 keys.")
         else:
-            key = f"comments/_gallery/{cfg.brand_slug}-comment-gallery.html"
-            url = metaapi.r2_put_html(cfg, key, doc)
+            url = metaapi.r2_put_html(cfg, f"comments/_gallery/{cfg.brand_slug}-comment-gallery.html", doc)
+            csv_url = metaapi.r2_put_text(cfg, f"comments/_gallery/{cfg.brand_slug}-comments.csv",
+                                          csv_text, 'text/csv; charset=utf-8')
             print(f"CLOUD URL: {url}")
+            print(f"DATA CSV:  {csv_url}")
     return out, url
+
+
+def export_csv(cfg, items):
+    """Write a flat machine-readable CSV of every comment (one row each).
+    Returns the CSV text (also written to output/comments_export.csv)."""
+    import io
+    buf = io.StringIO()
+    w = csv.writer(buf)
+    w.writerow(['post_id', 'comment_id', 'category', 'likes', 'date',
+                'media_url', 'facebook_link', 'text'])
+    for i in items:
+        media = i.get('video') or i.get('img') or ''
+        text = (i['text'] or '').replace('\r', ' ').replace('\n', '  ')
+        w.writerow([i['post'], i['cid'], i['cat'], i['likes'], i['time'],
+                    media, fb_link(i['post'], i['cid']), text])
+    csv_text = buf.getvalue()
+    # utf-8-sig so Excel opens it cleanly
+    (cfg.outdir / 'comments_export.csv').write_text('﻿' + csv_text, encoding='utf-8')
+    return csv_text
 
 
 def main(cfg, args):
