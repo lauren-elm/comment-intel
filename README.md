@@ -13,6 +13,8 @@ It's **white-label** and **self-serve** — each person brings their own Meta ap
 
 ---
 
+> 🧑‍🏫 **New to Claude Code?** Follow the **[20-minute Workshop](WORKSHOP.md)** — a beginner-paced, click-by-click walkthrough from zero to a live gallery.
+
 ## Install (in Claude Code)
 
 Add the marketplace, then install the plugin:
